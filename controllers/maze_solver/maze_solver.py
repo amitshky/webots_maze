@@ -47,36 +47,36 @@ D = 0.0520    # distance between the wheels: 52mm [m]
 
 # proximity sensors: measure distance to walls and obstacles
 ps = []
-psNames = ['ps0', 'ps1', 'ps2', 'ps3', 'ps4', 'ps5', 'ps6', 'ps7']
+ps_names = ['ps0', 'ps1', 'ps2', 'ps3', 'ps4', 'ps5', 'ps6', 'ps7']
 for i in range(8):
-    ps.append(robot.getDevice(psNames[i]))
+    ps.append(robot.getDevice(ps_names[i]))
     ps[i].enable(timestep)
 
 # encoders: measure the angular position of the wheels in radians
 encoder = []
-encoderNames = ['left wheel sensor', 'right wheel sensor']
+encoder_names = ['left wheel sensor', 'right wheel sensor']
 for i in range(2):
-    encoder.append(robot.getDevice(encoderNames[i]))
+    encoder.append(robot.getDevice(encoder_names[i]))
     encoder[i].enable(timestep)
 
-oldEncoderValues = []
+old_encoder_vals = []
 
 # motors
-leftMotor = robot.getDevice('left wheel motor')
-rightMotor = robot.getDevice('right wheel motor')
-leftMotor.setPosition(float('inf'))
-rightMotor.setPosition(float('inf'))
-leftMotor.setVelocity(0.0)
-rightMotor.setVelocity(0.0)
+left_motor = robot.getDevice('left wheel motor')
+right_motor = robot.getDevice('right wheel motor')
+left_motor.setPosition(float('inf'))
+right_motor.setPosition(float('inf'))
+left_motor.setVelocity(0.0)
+right_motor.setVelocity(0.0)
 
 # -------------------------- Functions ------------------------------------
 # Complete the functions below and create new ones to complete the mission
 
 
-def get_wheels_speed(encoderValues, oldEncoderValues, delta_t):
+def get_wheels_speed(encoder_vals, old_encoder_vals, delta_t):
     """Computes speed of the wheels based on encoder readings"""
-    wl = (encoderValues[0] - oldEncoderValues[0]) / delta_t
-    wr = (encoderValues[1] - oldEncoderValues[1]) / delta_t
+    wl = (encoder_vals[0] - old_encoder_vals[0]) / delta_t
+    wr = (encoder_vals[1] - old_encoder_vals[1]) / delta_t
 
     return wl, wr
 
@@ -116,6 +116,8 @@ def wheel_speed_commands(u_d, w_d, D, R):
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 while robot.step(timestep) != -1:
+    left_speed = 0
+    right_speed = 0
     # Implement the see-think-act cycle:
 
     ############################################
@@ -124,31 +126,46 @@ while robot.step(timestep) != -1:
 
     # Sensor values are being placed in the corresponding lists.
     # proximity sensors:
-    psValues = []
+    ps_vals = []
     for i in range(8):
-        psValues.append(ps[i].getValue())
+        ps_vals.append(ps[i].getValue())
     # encoders:
-    encoderValues = []
+    encoder_vals = []
     for i in range(2):
-        encoderValues.append(encoder[i].getValue())    # [rad]
+        encoder_vals.append(encoder[i].getValue())    # [rad]
     # Update old encoder values if not done before
-    if len(oldEncoderValues) < 2:
+    if len(old_encoder_vals) < 2:
         for i in range(2):
-            oldEncoderValues.append(encoder[i].getValue())
+            old_encoder_vals.append(encoder[i].getValue())
 
     # Add code here for the camera
+    print(f"Front ps:      {ps_vals[7]}, {ps_vals[0]}")
+    print(f"Front-side ps: {ps_vals[6]}, {ps_vals[1]}")
+    print(f"Side ps:       {ps_vals[5]}, {ps_vals[2]}")
+    print(f"Back ps:       {ps_vals[4]}, {ps_vals[3]}")
 
     ############################################
     #                  Think                   #
     ############################################
 
     # Implement the state machine to select proper behaviors
+    left_obstacle = ps_vals[7] > 80.0 or ps_vals[6] > 80.0
+    right_obstacle = ps_vals[0] > 80.0 or ps_vals[1] > 80.0
+    if left_obstacle:
+        left_speed = 0.8 * MAX_SPEED
+        right_speed = 0.2 * MAX_SPEED
+    elif right_obstacle:
+        left_speed = 0.2 * MAX_SPEED
+        right_speed = 0.8 * MAX_SPEED
+    else:
+        left_speed = MAX_SPEED
+        right_speed = MAX_SPEED
 
     # increment counter
     counter += 1
 
     # update old encoder values for the next cycle
-    oldEncoderValues = encoderValues
+    old_encoder_vals = encoder_vals
 
     ############################################
     #                   Act                    #
@@ -156,14 +173,12 @@ while robot.step(timestep) != -1:
     # Set motor speeds with the values defined by the state machine.
     # This part is already working. You only need to complete the function.
 
-    # leftSpeed, rightSpeed = wheel_speed_commands(u_d, w_d, D, R)
-    # leftMotor.setVelocity(leftSpeed)
-    # rightMotor.setVelocity(rightSpeed)
-    leftMotor.setVelocity(MAX_SPEED)
-    rightMotor.setVelocity(MAX_SPEED)
+    # left_speed, right_speed = wheel_speed_commands(u_d, w_d, D, R)
+    left_motor.setVelocity(left_speed)
+    right_motor.setVelocity(right_speed)
 
     # To help on debugging:
-    print(f'Current state = {current_state}, ps = {psValues[5]:.2f}, {
-          psValues[5]:.2f}, {psValues[0]:.2f}, {psValues[7]:.2f}')
+    print(f'Current state = {current_state}, ps = {ps_vals[5]:.2f}, {
+          ps_vals[5]:.2f}, {ps_vals[0]:.2f}, {ps_vals[7]:.2f}')
 
     # End of the loop. Repeat all steps while the simulation is running.
