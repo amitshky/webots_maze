@@ -61,6 +61,10 @@ for i in range(2):
 
 old_encoder_vals = []
 
+# camera
+camera = robot.getDevice('camera')
+camera.enable(timestep)
+
 # motors
 left_motor = robot.getDevice('left wheel motor')
 right_motor = robot.getDevice('right wheel motor')
@@ -139,10 +143,9 @@ while robot.step(timestep) != -1:
             old_encoder_vals.append(encoder[i].getValue())
 
     # Add code here for the camera
-    print(f"Front ps:      {ps_vals[7]}, {ps_vals[0]}")
-    print(f"Front-side ps: {ps_vals[6]}, {ps_vals[1]}")
-    print(f"Side ps:       {ps_vals[5]}, {ps_vals[2]}")
-    print(f"Back ps:       {ps_vals[4]}, {ps_vals[3]}")
+    image = camera.getImage()
+    width = camera.getWidth()
+    height = camera.getHeight()
 
     ############################################
     #                  Think                   #
@@ -161,6 +164,24 @@ while robot.step(timestep) != -1:
         left_speed = MAX_SPEED
         right_speed = MAX_SPEED
 
+    red = 0
+    green = 0
+    blue = 0
+    count = 0
+    for x in range(width // 3, 2 * width // 3):
+        for y in range(height // 3, 2 * height // 3):
+            count += 1
+            red += camera.imageGetRed(image, width, x, y)
+            green += camera.imageGetGreen(image, width, x, y)
+            blue += camera.imageGetBlue(image, width, x, y)
+
+    red //= count
+    green //= count
+    blue //= count
+    is_wall_ahead = False
+    if red > 200 and green > 200 and blue > 200:
+        is_wall_ahead = True
+
     # increment counter
     counter += 1
 
@@ -178,7 +199,10 @@ while robot.step(timestep) != -1:
     right_motor.setVelocity(right_speed)
 
     # To help on debugging:
-    print(f'Current state = {current_state}, ps = {ps_vals[5]:.2f}, {
-          ps_vals[5]:.2f}, {ps_vals[0]:.2f}, {ps_vals[7]:.2f}')
+    print(f'Current state = {current_state}, Wall Ahead: {is_wall_ahead}')
+    print(f"Front ps:      {ps_vals[7]}, {ps_vals[0]}")
+    print(f"Front-side ps: {ps_vals[6]}, {ps_vals[1]}")
+    print(f"Side ps:       {ps_vals[5]}, {ps_vals[2]}")
+    print(f"Back ps:       {ps_vals[4]}, {ps_vals[3]}")
 
     # End of the loop. Repeat all steps while the simulation is running.
